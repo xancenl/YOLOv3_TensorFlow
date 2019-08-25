@@ -65,16 +65,16 @@ args.class_num = len(args.classes)
 args.img_cnt = len(open(args.eval_file, 'r').readlines())
 
 # setting placeholders
-is_training = tf.placeholder(dtype=tf.bool, name="phase_train")
-handle_flag = tf.placeholder(tf.string, [], name='iterator_handle_flag')
-pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
-pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
+is_training = tf.compat.v1.placeholder(dtype=tf.bool, name="phase_train")
+handle_flag = tf.compat.v1.placeholder(tf.string, [], name='iterator_handle_flag')
+pred_boxes_flag = tf.compat.v1.placeholder(tf.float32, [1, None, None])
+pred_scores_flag = tf.compat.v1.placeholder(tf.float32, [1, None, None])
 gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num, args.nms_topk, args.score_threshold, args.nms_threshold)
 
 ##################
 # tf.data pipeline
 ##################
-val_dataset = tf.data.TextLineDataset(args.eval_file)
+val_dataset = tf.compat.v1.data.TextLineDataset(args.eval_file)
 val_dataset = val_dataset.batch(1)
 val_dataset = val_dataset.map(
     lambda x: tf.py_func(get_batch_data, [x, args.class_num, args.img_size, args.anchors, 'val', False, False, args.letterbox_resize], [tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
@@ -94,15 +94,15 @@ for y in y_true:
 # Model definition
 ##################
 yolo_model = yolov3(args.class_num, args.anchors)
-with tf.variable_scope('yolov3'):
+with tf.compat.v1.variable_scope('yolov3'):
     pred_feature_maps = yolo_model.forward(image, is_training=is_training)
 loss = yolo_model.compute_loss(pred_feature_maps, y_true)
 y_pred = yolo_model.predict(pred_feature_maps)
 
-saver_to_restore = tf.train.Saver()
+saver_to_restore = tf.compat.v1.train.Saver()
 
-with tf.Session() as sess:
-    sess.run([tf.global_variables_initializer()])
+with tf.compat.v1.Session() as sess:
+    sess.run([tf.compat.v1.global_variables_initializer()])
     saver_to_restore.restore(sess, args.restore_path)
 
     print('\n----------- start to eval -----------\n')
