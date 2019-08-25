@@ -1,5 +1,8 @@
 #  YOLOv3_TensorFlow
 
+### FORK NOTICE
+This is a forked github repository with required Tensorflow 1.x changes and recommendations for future support in upgrades.
+
 ### 1. Introduction
 
 This is my implementation of [YOLOv3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) in pure TensorFlow. It contains the full pipeline of training and evaluation on your own dataset. The key features of this repo are:
