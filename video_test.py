@@ -30,6 +30,8 @@ parser.add_argument("--restore_path", type=str, default="./data/darknet_weights/
                     help="The path of the weights to restore.")
 parser.add_argument("--save_video", type=lambda x: (str(x).lower() == 'true'), default=False,
                     help="Whether to save the video detection results.")
+parser.add_argument("output_video", type=str, default="video_result.avi",
+                    help="The path of the output video")
 args = parser.parse_args()
 
 args.anchors = parse_anchors(args.anchor_path)
@@ -45,13 +47,17 @@ video_height = int(vid.get(4))
 video_fps = int(vid.get(5))
 
 if args.save_video:
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    videoWriter = cv2.VideoWriter('video_result.mp4', fourcc, video_fps, (video_width, video_height))
+    # mp4 encoder
+    #fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+    #videoWriter = cv2.VideoWriter('video_result.mp4', fourcc, video_fps, (video_width, video_height))
+    # xvid encoder
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    videoWriter = cv2.VideoWriter(args.output_video, fourcc, video_fps, (video_width, video_height))
 
-with tf.Session() as sess:
-    input_data = tf.placeholder(tf.float32, [1, args.new_size[1], args.new_size[0], 3], name='input_data')
+with tf.compat.v1.Session() as sess:
+    input_data = tf.compat.v1.placeholder(tf.float32, [1, args.new_size[1], args.new_size[0], 3], name='input_data')
     yolo_model = yolov3(args.num_class, args.anchors)
-    with tf.variable_scope('yolov3'):
+    with tf.compat.v1.variable_scope('yolov3'):
         pred_feature_maps = yolo_model.forward(input_data, False)
     pred_boxes, pred_confs, pred_probs = yolo_model.predict(pred_feature_maps)
 
@@ -59,7 +65,7 @@ with tf.Session() as sess:
 
     boxes, scores, labels = gpu_nms(pred_boxes, pred_scores, args.num_class, max_boxes=200, score_thresh=0.3, nms_thresh=0.45)
 
-    saver = tf.train.Saver()
+    saver = tf.compat.v1.train.Saver()
     saver.restore(sess, args.restore_path)
 
     for i in range(video_frame_cnt):
@@ -85,17 +91,22 @@ with tf.Session() as sess:
             boxes_[:, [0, 2]] *= (width_ori/float(args.new_size[0]))
             boxes_[:, [1, 3]] *= (height_ori/float(args.new_size[1]))
 
+        # TODO: export detections to json
 
         for i in range(len(boxes_)):
             x0, y0, x1, y1 = boxes_[i]
             plot_one_box(img_ori, [x0, y0, x1, y1], label=args.classes[labels_[i]] + ', {:.2f}%'.format(scores_[i] * 100), color=color_table[labels_[i]])
+            
         cv2.putText(img_ori, '{:.2f}ms'.format((end_time - start_time) * 1000), (40, 40), 0,
                     fontScale=1, color=(0, 255, 0), thickness=2)
-        cv2.imshow('image', img_ori)
+        
+        #cv2.imshow('image', img_ori)
+        
         if args.save_video:
             videoWriter.write(img_ori)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            
+        #if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break
 
     vid.release()
     if args.save_video:
