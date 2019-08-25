@@ -21,17 +21,17 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(mes
                     datefmt='%a, %d %b %Y %H:%M:%S', filename=args.progress_log_path, filemode='w')
 
 # setting placeholders
-is_training = tf.placeholder(tf.bool, name="phase_train")
-handle_flag = tf.placeholder(tf.string, [], name='iterator_handle_flag')
+is_training = tf.compat.v1.placeholder(tf.bool, name="phase_train")
+handle_flag = tf.compat.v1.placeholder(tf.string, [], name='iterator_handle_flag')
 # register the gpu nms operation here for the following evaluation scheme
-pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
-pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
+pred_boxes_flag = tf.compat.v1.placeholder(tf.float32, [1, None, None])
+pred_scores_flag = tf.compat.v1.placeholder(tf.float32, [1, None, None])
 gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num, args.nms_topk, args.score_threshold, args.nms_threshold)
 
 ##################
 # tf.data pipeline
 ##################
-train_dataset = tf.data.TextLineDataset(args.train_file)
+train_dataset = tf.compat.v1.data.TextLineDataset(args.train_file)
 train_dataset = train_dataset.shuffle(args.train_img_cnt)
 train_dataset = train_dataset.batch(args.batch_size)
 train_dataset = train_dataset.map(
@@ -42,7 +42,7 @@ train_dataset = train_dataset.map(
 )
 train_dataset = train_dataset.prefetch(args.prefetech_buffer)
 
-val_dataset = tf.data.TextLineDataset(args.val_file)
+val_dataset = tf.compat.v1.data.TextLineDataset(args.val_file)
 val_dataset = val_dataset.batch(1)
 val_dataset = val_dataset.map(
     lambda x: tf.py_func(get_batch_data,
@@ -52,7 +52,7 @@ val_dataset = val_dataset.map(
 )
 val_dataset.prefetch(args.prefetech_buffer)
 
-iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
+iterator = tf.compat.v1.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
 train_init_op = iterator.make_initializer(train_dataset)
 val_init_op = iterator.make_initializer(val_dataset)
 
@@ -70,7 +70,7 @@ for y in y_true:
 # Model definition
 ##################
 yolo_model = yolov3(args.class_num, args.anchors, args.use_label_smooth, args.use_focal_loss, args.batch_norm_decay, args.weight_decay, use_static_shape=False)
-with tf.variable_scope('yolov3'):
+with tf.compat.v1.variable_scope('yolov3'):
     pred_feature_maps = yolo_model.forward(image, is_training=is_training)
 loss = yolo_model.compute_loss(pred_feature_maps, y_true)
 y_pred = yolo_model.predict(pred_feature_maps)
@@ -78,7 +78,7 @@ y_pred = yolo_model.predict(pred_feature_maps)
 l2_loss = tf.losses.get_regularization_loss()
 
 # setting restore parts and vars to update
-saver_to_restore = tf.train.Saver(var_list=tf.contrib.framework.get_variables_to_restore(include=args.restore_include, exclude=args.restore_exclude))
+saver_to_restore = tf.compat.v1.train.Saver(var_list=tf.contrib.framework.get_variables_to_restore(include=args.restore_include, exclude=args.restore_exclude))
 update_vars = tf.contrib.framework.get_variables_to_restore(include=args.update_part)
 
 tf.summary.scalar('train_batch_statistics/total_loss', loss[0])
@@ -99,8 +99,8 @@ else:
 tf.summary.scalar('learning_rate', learning_rate)
 
 if not args.save_optimizer:
-    saver_to_save = tf.train.Saver()
-    saver_best = tf.train.Saver()
+    saver_to_save = tf.compat.v1.train.Saver()
+    saver_best = tf.compat.v1.train.Saver()
 
 optimizer = config_optimizer(args.optimizer_name, learning_rate)
 
@@ -116,11 +116,11 @@ with tf.control_dependencies(update_ops):
 
 if args.save_optimizer:
     print('Saving optimizer parameters to checkpoint! Remember to restore the global_step in the fine-tuning afterwards.')
-    saver_to_save = tf.train.Saver()
-    saver_best = tf.train.Saver()
+    saver_to_save = tf.compat.v1.train.Saver()
+    saver_best = tf.compat.v1.train.Saver()
 
-with tf.Session() as sess:
-    sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+with tf.compat.v1.Session() as sess:
+    sess.run([tf.compat.v1.global_variables_initializer(), tf.compat.v1.local_variables_initializer()])
     saver_to_restore.restore(sess, args.restore_path)
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter(args.log_dir, sess.graph)
